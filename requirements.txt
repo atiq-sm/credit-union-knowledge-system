@@ -1,0 +1,4 @@
+# Installed into a clean Python 3.11 environment by the graders.
+# numpy capped below 2.5: numpy 2.5 requires Python >= 3.12.
+fastembed==0.9.0
+numpy>=1.26,<2.5
