@@ -14,7 +14,7 @@ import numpy as np
 from bm25 import _STOP, tokenize
 from corpus import strip_links
 
-CONTACT_LINE = "You can also call Dupaco at 800-373-7600."
+CONTACT_LINE = "You can also call Dupaco at {phone}."   # the toll-free number the site prints most
 REFUSAL = ("I couldn't find that on Dupaco's website. Please contact Dupaco directly "
            "so a team member can help.")
 MIN_DENSE = 0.40          # below this, nothing retrieved is about the question
@@ -606,8 +606,9 @@ def answer_from_chunks(question: str, hits, retriever, embedder, snap_idx: int, 
     if not retriever.cc[ci].published and title and not re.search(r"\d", title) and \
             not (_words(title) <= _words(text)) and "/rates" not in retriever.cc[ci].chunk.url:
         text = f"{title}: {text}"          # name the product page the answer comes from
-    if HOWTO_Q.search(question) and not re.search(r"\d{3}-\d{3}-\d{4}", text):
-        text = f"{text} {CONTACT_LINE}"
+    phone = retriever.main_phone(snap_idx) if HOWTO_Q.search(question) else None
+    if phone and not re.search(r"\d{3}-\d{3}-\d{4}", text):
+        text = f"{text} {CONTACT_LINE.format(phone=phone)}"
     src = [retriever.cc[ci].chunk.url] + extra_src + [retriever.cc[h[0]].chunk.url for h in hits[:3]
                                                       if retriever.cc[h[0]].chunk.url != retriever.cc[ci].chunk.url]
     return {"text": text, "sources": list(dict.fromkeys(src)), "confident": True}

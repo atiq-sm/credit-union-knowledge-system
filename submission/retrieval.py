@@ -25,6 +25,7 @@ W_AUTH = 0.03
 W_RECENT = 0.04
 RECENCY_YEARS = 2.0
 EXPIRED_PENALTY = 0.15
+_TOLL_FREE = re.compile(r"\b8(?:00|33|44|55|66|77|88)-\d{3}-\d{4}\b")
 _EXPIRED = re.compile(r"offer has (expired|ended)|this offer has expired", re.I)
 
 
@@ -88,6 +89,19 @@ class Retriever:
     def on_page(self, text: str, url: str, snap: int) -> bool:
         """`text` appears in some chunk of page `url` live in `snap`."""
         return any(self.masks[snap][i] and text in self.cc[i].chunk.text for i in self._page(url))
+
+    def main_phone(self, snap: int) -> str | None:
+        """The toll-free number printed on the most pages live in `snap` (the general contact line)."""
+        if not hasattr(self, "_phones"):
+            self._phones: dict[int, str | None] = {}
+        if snap not in self._phones:
+            pages: dict[str, set] = {}
+            for i, c in enumerate(self.cc):
+                if self.masks[snap][i]:
+                    for num in _TOLL_FREE.findall(c.chunk.text):
+                        pages.setdefault(num, set()).add(c.chunk.url)
+            self._phones[snap] = max(pages, key=lambda n: (len(pages[n]), n)) if pages else None
+        return self._phones[snap]
 
     def page_hits(self, ci: int, snap: int, exclude, k: int = 4, qvec=None):
         """The other chunks of chunk `ci`'s page live in `snap`, best first, scored like search()

@@ -18,7 +18,7 @@ STATS = {   # name -> (pattern with group 1 = value incl. its qualifier, answer 
     "employees": (re.compile(r"\b(?:has|employs)\s+((?:more than|over|nearly)\s+\d{3,4})\s+employees", re.I),
                   "Dupaco has {v} employees"),
     "counties": (re.compile(r"\bresidents in\s+(\d{2,3})\s+counties\b", re.I),
-                 "Dupaco serves residents in {v} counties throughout Iowa, northwest Illinois and southwest Wisconsin"),
+                 "Dupaco serves residents in {v} counties{where}"),
     "assets": (re.compile(r"\bassets\s+((?:of\s+)?(?:exceeding|of more than|of nearly|nearly|more than|over)\s+\$[\d.]+\s+billion)", re.I),
                "Dupaco has assets {v}"),
 }
@@ -46,6 +46,15 @@ class Stat:
     published: str
     snapshots: set
     sentence: str
+
+
+_WHERE = re.compile(r"\bcounties\s+((?:throughout|across|in)\s+[^.;]+)", re.I)
+
+
+def _say(name: str, st: "Stat") -> str:
+    """The stat in words; the area a county count covers is quoted from its own sentence."""
+    m = _WHERE.search(st.sentence)
+    return STATS[name][1].format(v=st.value, where=f" {m.group(1).strip()}" if m else "")
 
 
 def _sentence(text: str, start: int, end: int) -> str:
@@ -88,10 +97,10 @@ class OrgFacts:
                 if st is None:
                     return None
                 if not st.url.lower().endswith(".pdf"):
-                    return {"text": STATS[name][1].format(v=st.value)
+                    return {"text": _say(name, st)
                             + f", according to its most recent release ({_fmt(st.published)}).",
                             "sources": [st.url], "confident": True}
-                text = STATS[name][1].format(v=st.value) + f" as of {_fmt(st.published)} (Owner's Manual newsletter)."
+                text = _say(name, st) + f" as of {_fmt(st.published)} (Owner's Manual newsletter)."
                 rel = self.current(name, snap, taken_on, releases_only=True)
                 if rel:
                     text += f" Its most recent press release ({_fmt(rel.published)}) said {rel.value}."

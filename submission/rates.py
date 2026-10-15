@@ -159,6 +159,7 @@ def answer_rate(q: Query, ft: FactTable) -> dict | None:
     groups: dict[tuple, dict] = {}        # (family, tier) -> {metric: Obs}
     order: list[tuple] = []
     jumbo_exists = False
+    jumbo_mins: list[float] = []         # the jumbo tier's minimum to open, from the rate table
     for fam in q.families:
         scope = "business" if fam.startswith("business_") else q.scope
         jumbo = q.jumbo
@@ -168,6 +169,9 @@ def answer_rate(q: Query, ft: FactTable) -> dict | None:
                          amount=q.amount, balance=q.balance, model_year=q.model_year, jumbo=jumbo, ira=q.ira)
         if q.jumbo is None and jumbo is False and ft.lookup(fam, snap, scope=scope, term_months=q.term_months, jumbo=True):
             jumbo_exists = True
+            jumbo_mins += [o.value for _, o in ft.lookup(fam, snap, scope=scope, metrics=["min_open", "min_balance"],
+                                                         term_months=q.term_months, jumbo=True)
+                           if isinstance(o.value, (int, float)) and o.value > 0]
         trusted = [(k, o) for k, o in hits if o.authority >= TRUSTED]
         if trusted:
             hits = trusted
@@ -230,7 +234,7 @@ def answer_rate(q: Query, ft: FactTable) -> dict | None:
         if lows:
             text += f" A balance of at least ${min(lows):,.0f} is needed to earn dividends."
     if jumbo_exists:
-        text += " A jumbo version ($100,000 minimum) is also offered."
+        text += f" A jumbo version (${min(jumbo_mins):,.0f} minimum) is also offered." if jumbo_mins else             " A jumbo version is also offered."
     if q.as_of and snap < len(ft.dates) - 1:
         text = f"As of {_fmt_date(q.as_of)} (website as of {_fmt_date(ft.dates[snap])}): " + text
     return _pack(text, order, groups, q, ft, snap)

@@ -10,8 +10,8 @@ dev/.cache/
 submission/.model_cache/
 
 # supplied website data: not ours to redistribute
-snapshots/
-snapshots_zip/
+/snapshots/
+/snapshots_zip/
 # assignment material and local tooling
 *.pdf
 KIT_README.md
